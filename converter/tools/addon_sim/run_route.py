@@ -204,3 +204,4 @@ for i, f in enumerate(sorted(s.dryrun_files(9998), key=pull_order)):
 print('FAIL:', len(FAIL))
 for m in FAIL:
     print('  ', m)
+sys.exit(1 if FAIL else 0)

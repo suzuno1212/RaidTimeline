@@ -1,0 +1,61 @@
+name: release
+
+# v で始まるタグを push すると、アドオンの zip と変換ツールの exe（zip）を Releases に置く
+#   git tag v0.6.9 && git push origin v0.6.9
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: versions
+        id: ver
+        shell: pwsh
+        run: |
+          $addon = (Select-String -Path addon/RaidTimeline/RaidTimeline.lua -Pattern 'RTL\.version\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
+          $tool  = (Select-String -Path converter/ui/version.py -Pattern "VERSION\s*=\s*'([^']+)'").Matches[0].Groups[1].Value
+          "addon=$addon" >> $env:GITHUB_OUTPUT
+          "tool=$tool"   >> $env:GITHUB_OUTPUT
+          Write-Host "addon $addon / tool $tool"
+
+      - name: test
+        working-directory: converter
+        run: |
+          python -m pip install -r requirements-dev.txt
+          python -m pytest -q
+
+      - name: addon zip
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force out | Out-Null
+          Compress-Archive -Path addon/RaidTimeline -DestinationPath "out/RaidTimeline-addon-${{ steps.ver.outputs.addon }}.zip"
+
+      - name: converter exe
+        working-directory: converter
+        shell: pwsh
+        run: |
+          python -m PyInstaller --noconfirm RaidTimelineTool.spec
+          Copy-Item ../LICENSE dist/RaidTimelineTool/
+          Compress-Archive -Path dist/RaidTimelineTool -DestinationPath "../out/RaidTimelineTool-${{ steps.ver.outputs.tool }}-win64.zip"
+
+      - name: release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*.zip
+          name: RaidTimeline ${{ github.ref_name }}
+          body: |
+            アドオン ${{ steps.ver.outputs.addon }} ／ 変換ツール ${{ steps.ver.outputs.tool }}
+            変更点は CHANGELOG.md を見てください。入れ方は説明書きの「はじめかた」へ。
+          draft: false
+          prerelease: false

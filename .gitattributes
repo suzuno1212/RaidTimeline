@@ -1,0 +1,2 @@
+# 改行や文字を git に変えさせない（Lua・bat は CRLF のまま）
+* -text

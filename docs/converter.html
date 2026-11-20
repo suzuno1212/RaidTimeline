@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
+<meta name="googlebot" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>変換ツール ｜ RaidTimeline</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%237482ff'/%3E%3Cpath d='M5 7h9M5 12h14M5 17h6' stroke='%230d0f26' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="index.html"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#0d0f26" stroke-width="2.4" stroke-linecap="round"><path d="M4 6h10M4 12h16M4 18h7"/><circle cx="18" cy="6" r="1.6" fill="#0d0f26"/><circle cx="15" cy="18" r="1.6" fill="#0d0f26"/></svg></span>RaidTimeline</a>
+  <nav class="topnav"><a href="start.html">はじめかた</a><a href="addon.html">アドオン</a><a href="converter.html" class="on">変換ツール</a><a href="timeline.html">タイムラインとプラン</a><a href="faq.html">困ったとき</a></nav>
+  <span class="spacer"></span>
+  <a class="btn primary" href="https://github.com/suzuno1212/RaidTimeline/releases/latest">ダウンロード</a>
+</header>
+<div class="layout"><aside class="side"><h4>このページ</h4><a href="#material">材料</a><a href="#open">開く</a><a href="#overview">一覧を見る</a><a href="#phases">フェーズを区切る</a><a href="#export">書き出す</a><a href="#migrate">タイムラインを差し替えてプランを移す</a><a href="#settings">設定</a><h4>ほかのページ</h4><a href="index.html">ホーム</a><a href="start.html">はじめかた</a><a href="addon.html">アドオン</a><a href="timeline.html">タイムラインとプラン</a><a href="faq.html">困ったとき</a></aside><main><!-- title:変換ツール -->
+<h1>変換ツール</h1>
+<p class="lead">リプレイや記録ログを読んで、アドオンが使うタイムラインを書き出す Windows のツールです。何プル分もまとめて読ませるほど、正確になります。図はサンプルのデータです。</p>
+
+<h2 id="material">材料</h2>
+<table>
+  <tr><th>材料</th><th>どこにあるか</th><th>分かること</th></tr>
+  <tr><td>リプレイ（<code>.dat</code>）</td><td>ドキュメント → <code>My Games</code> → ゲームのフォルダ → <code>replay</code>（名前を付け直すツールを使っていれば <code>replay\autorenamed</code>）</td><td>敵の詠唱・ターゲット可否。1 ファイルに何プルも入っています。</td></tr>
+  <tr><td>記録ログ（<code>.csv</code>）</td><td><code>LuaMods\RaidTimeline\logs\&lt;mapid&gt;\</code>（アドオンの記録モード）</td><td>詠唱・HP・出現・消滅など。1 ファイル＝1 プル。</td></tr>
+  <tr><td>タイムライン（<code>.lua</code>）</td><td><code>LuaMods\RaidTimeline\timelines\</code></td><td>前に書き出したものを開いて直す。</td></tr>
+</table>
+<div class="tip">いちばん正確なのは <b>リプレイ＋記録ログ</b>。同じ戦闘のリプレイとログを自動で組にして、時刻は記録ログ、ログが無いプルはリプレイで補います。</div>
+
+<h2 id="open">開く</h2>
+<figure><img src="img/tool_start.webp" alt="開く画面"><figcaption>上のボタンで材料を選びます。</figcaption></figure>
+<table>
+  <tr><th>ボタン</th><th>動き</th></tr>
+  <tr><td>リプレイを開く</td><td>リプレイを選ぶと、中の戦闘（敵ごと）とプルが並びます。使うプルにチェックを入れて開きます。</td></tr>
+  <tr><td>記録ログを開く</td><td>記録ログを複数選べます。同じコンテンツのものだけ使います。</td></tr>
+  <tr><td>リプレイ＋記録ログを開く</td><td>リプレイを選んだあと、ログ選びは <code>logs\&lt;そのリプレイの mapid&gt;</code> から開きます。別のコンテンツのログが混ざっていれば注意が出て、使われません。リプレイに無いプルのログは「追加のプル」として使います。</td></tr>
+  <tr><td>タイムラインを開く ▾</td><td>書き出したタイムラインを開いて直します。</td></tr>
+</table>
+
+<h2 id="overview">一覧を見る</h2>
+<figure><img src="img/tool_overview.webp" alt="タイムラインの一覧"><figcaption>フェーズごとに、詠唱（イベント）が時刻の順に並びます。</figcaption></figure>
+<p>プルを比べて、イベントごとに種類を付けます。</p>
+<table>
+  <tr><th>種類</th><th>意味</th><th>タイムラインでは</th></tr>
+  <tr><td><span class="badge">安定</span></td><td>どのプルでも、同じ技がほぼ同じ時刻に来る。</td><td>そのまま 1 つのイベント。</td></tr>
+  <tr><td><span class="badge">分岐</span></td><td>同じ時刻に、プルによって違う技が来る（ランダム）。</td><td>1 つのイベントに技を複数（A か B）。</td></tr>
+  <tr><td><span class="badge">入れ替わり</span></td><td>技の順番がプルで入れ替わる。</td><td>分岐としてまとめます。</td></tr>
+  <tr><td><span class="badge">一部</span></td><td>一部のプルにしか無い（そこまで行かなかったプルがある など）。</td><td>イベントにはしますが、確かめてください。</td></tr>
+</table>
+<div class="note">1 プルだけでは、ランダムも入れ替わりも時刻のばらつきも分かりません。同じコンテンツのプルを増やしてください。</div>
+<p>技名は行で直せます。「直した技名を自分の <code>names\actions.lua</code> にも書く」を ON にすると、次から同じ技に同じ名前が付きます。</p>
+
+<h2 id="phases">フェーズを区切る</h2>
+<p>時刻が途中から変わる戦闘（ギミックの成否で長さが変わる、火力で次へ進む、流れが枝分かれする など）は、フェーズで区切ります。区切ったところで、アドオンは時計を合わせ直します。</p>
+<figure class="narrow"><img src="img/tool_phases.webp" alt="フェーズの区切り"><figcaption>「フェーズの区切り」。ツールが見つけた候補を押すと足せます。</figcaption></figure>
+<table>
+  <tr><th>区切り方</th><th>使う戦闘</th></tr>
+  <tr><td><b>分ける</b>（イベントの行）</td><td>その詠唱から次のフェーズ。いちばん基本。</td></tr>
+  <tr><td><b>どこで来ても</b></td><td>秒数に関係なく、その技が（何回目に）来たところで区切る。フェーズの長さがプルで違うとき。</td></tr>
+  <tr><td><b>流れで分ける</b>（分岐の行）</td><td>来た技ごとに別のフェーズにする。流れそのものが枝分かれして、その後の順番が変わる戦闘用。技が変わるだけのランダムには使いません。</td></tr>
+  <tr><td><b>HP で分ける</b></td><td>敵の HP が〇% 以下になったら次へ。火力で移る戦闘だけ。候補には、プルをまたいで HP が止まった % が出ます。</td></tr>
+  <tr><td><b>ターゲット</b></td><td>敵がターゲットできる / できなくなったら次へ（何回目かも指定できます）。雑魚フェーズの終わりなど。</td></tr>
+</table>
+<div class="warn">HP で区切るのは、本当に HP で移る戦闘だけにしてください。時刻で移る戦闘を HP で区切ると、プルごとの HP がばらばらで合いません（ツールも注意を出します）。</div>
+
+<h2 id="export">書き出す</h2>
+<figure class="narrow"><img src="img/tool_export.webp" alt="書き出し"><figcaption>「書き出し」。</figcaption></figure>
+<table>
+  <tr><th>項目</th><th>説明</th></tr>
+  <tr><td>ファイル名</td><td>英数字・<code>_</code>・<code>-</code>。先頭の <code>&lt;mapid&gt;_</code> は自動で付きます。</td></tr>
+  <tr><td>表示名</td><td>アドオンの画面に出る名前（日本語可）。</td></tr>
+  <tr><td>作成者・改訂番号</td><td>共有するときの目印。改訂番号は直すたびに上げます（プランと版が違うと、アドオンが注意を出します）。</td></tr>
+  <tr><td>書き出し先</td><td>ふつうは <code>LuaMods\RaidTimeline\timelines</code>。</td></tr>
+</table>
+<p>同じ mapid のタイムラインが複数あると、アドオンはファイル名の順で最初のものを使います（画面で選び直せます）。</p>
+
+<h2 id="migrate">タイムラインを差し替えてプランを移す</h2>
+<p>前より正確なタイムラインができたとき、古いタイムラインを上書きして、プランのエントリを新しいタイムラインのイベントに付け替えられます。</p>
+<figure><img src="img/tool_migrate.webp" alt="プランを移す"><figcaption>「プランを新しいタイムラインに移す」。プランごとにプレビューできます。</figcaption></figure>
+<ul>
+  <li>イベントごとに <span class="badge">そのまま</span>・<span class="badge">付け替え</span>（同じフェーズの同じ技・近い時刻）・<span class="badge">見つからない</span> に分けます。見つからないエントリは消さずにプランに残します（アドオンでは使われないので、プラン編集で付け直してください）。</li>
+  <li>プランは書き換える前の版を <code>plans\&lt;mapid&gt;\backup\</code> に残します（アドオンの「元に戻す」と同じ場所）。</li>
+  <li>別名で書き出すときは、「元のタイムラインを backup に移す」を選べます（2 つ並んで、古いほうが使われるのを防ぎます）。</li>
+  <li>移すかどうかは選べます。移さなければ、書き出すだけです。</li>
+</ul>
+
+<h2 id="settings">設定</h2>
+<figure class="narrow"><img src="img/tool_settings.webp" alt="設定"><figcaption>右上の「設定」。</figcaption></figure>
+<table>
+  <tr><th>項目</th><th>説明</th></tr>
+  <tr><td>LuaMods\RaidTimeline</td><td>アドオンのフォルダ。最初は C〜Z ドライブから自動で探します。</td></tr>
+  <tr><td>リプレイのフォルダ</td><td>「リプレイを開く」で最初に開く場所。最初はドキュメントの中から探します。</td></tr>
+  <tr><td>作成者</td><td>新しく作るタイムラインの作成者。</td></tr>
+</table>
+<div class="pager"><a href="addon.html"><small>前へ</small>アドオン</a><a class="next" href="timeline.html"><small>次へ</small>タイムラインとプラン</a></div></main></div>
+<footer>RaidTimeline ・ MIT License ・ 作者 suzu ・ <a href="https://github.com/suzuno1212/RaidTimeline">GitHub</a></footer>
+<script src="assets/site.js"></script>
+</body>
+</html>

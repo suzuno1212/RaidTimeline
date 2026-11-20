@@ -1,0 +1,6 @@
+[Module]
+Name=RAIDTIMELINE
+Version=1
+Files=RaidTimeline.lua
+Dependencies=minionlib
+Enabled=1

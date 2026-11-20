@@ -1,0 +1,4 @@
+-r requirements.txt
+pytest>=8
+lupa>=2.0
+pyinstaller>=6

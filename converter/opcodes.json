@@ -1,0 +1,25 @@
+{
+  "0xd72b61": {
+    "cast": "0x0301",
+    "effect1": "0x00bd",
+    "init_zone": "0x02cc",
+    "spawn": "0x0114",
+    "status": "0x02ce"
+  },
+  "0xd7ff4d": {
+    "actor_control": "0x0229",
+    "cast": "0x007f",
+    "effect1": "0x0363",
+    "init_zone": "0x009c",
+    "spawn": "0x017d",
+    "status": "0x00d4"
+  },
+  "0xd975a5": {
+    "actor_control": "0x02df",
+    "cast": "0x0160",
+    "effect1": "0x0190",
+    "init_zone": "0x00ab",
+    "spawn": "0x0176",
+    "status": "0x015d"
+  }
+}

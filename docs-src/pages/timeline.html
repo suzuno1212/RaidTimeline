@@ -1,0 +1,101 @@
+<!-- title:タイムラインとプラン -->
+<h1>タイムラインとプラン</h1>
+<p class="lead">2 つのファイルの考え方と書き方です。どちらも Lua の表の形ですが、アドオンは Lua として実行せず、表として読むだけです。</p>
+
+<h2 id="idea">考え方</h2>
+<div class="grid two">
+  <div class="card"><h3>タイムライン（みんなで共通）</h3><p>「このコンテンツでは、いつ・どの敵が・何の技を使うか」。アクションのことは書きません。<br><code>timelines\&lt;mapid&gt;_&lt;名前&gt;.lua</code></p></div>
+  <div class="card"><h3>プラン（自分用）</h3><p>「どの技の・何秒前に・何を使うか（何を鳴らすか）」。ジョブ・ポジションごと。<br><code>plans\&lt;mapid&gt;\&lt;ジョブ&gt;_&lt;ポジション&gt;.lua</code></p></div>
+</div>
+<p>プランは秒数ではなく <b>タイムラインのイベント</b> を基準に書きます。だから、タイムラインを正確なものに差し替えても、プランはそのまま使えます（イベントの ID が変わったときは、変換ツールで <a href="converter.html#migrate">付け替え</a> られます）。</p>
+
+<h2 id="phase">フェーズと時計</h2>
+<ul>
+  <li>フェーズは「順番」ではなく <b>きっかけ（トリガー）</b> で入ります。並びに意味はないので、プルで順番が入れ替わる戦闘でも、来たきっかけのフェーズに入ります。</li>
+  <li>同じフェーズには 1 プルで 1 回だけ入ります。</li>
+  <li>フェーズに入ると時計が 0 から進みます。詠唱を照合するたびに、予定の時刻を実際の時刻で上書きします。</li>
+  <li><b>同期点</b>（<code>syncs</code>）が来ると、時計をその秒数に合わせ直します（ずれが <code>window</code> 秒より大きいときは合わせません）。</li>
+  <li>秒数の基準は、パーティが最初に敵を攻撃した時刻です。</li>
+</ul>
+
+<h2 id="timeline">タイムラインの書き方</h2>
+<pre><code>return {
+    format = 1,
+    meta = {
+        name = "サンプル", mapid = 9001, version = 1, author = "suzu",
+    },
+    actions = {                      -- 技名（表示だけに使う。照合は ID）
+        [40001] = "全体攻撃",
+        [40002] = "技A", [40003] = "技B",
+    },
+    entities = {                     -- 敵の登録
+        boss = { name = "サンプルボス", contentid = 9001 },
+    },
+    phases = {
+        {
+            id = "p1", name = "前半",
+            trigger = { type = "combat_start" },
+            events = {
+                -- t = フェーズ開始から詠唱開始まで、cast = 詠唱時間（着弾は t + cast）
+                { id = "p1_raidwide", name = "全体攻撃", t = 10.0, cast = 5.0,
+                  match = { entity = "boss", action = 40001 } },
+                -- A か B のどちらかが来る（分岐・ランダム）
+                { id = "p1_ab", name = "技A / 技B", t = 25.0, cast = 6.0,
+                  match = { entity = "boss", action = { 40002, 40003 } } },
+            },
+            syncs = {
+                { on = { type = "cast_start", entity = "boss", action = 40001, nth = 1 }, t = 10.0, window = 10.0 },
+            },
+        },
+    },
+}</code></pre>
+
+<h3>フェーズのきっかけ（trigger）</h3>
+<table>
+  <tr><th>type</th><th>項目</th><th>意味</th></tr>
+  <tr><td><code>combat_start</code></td><td></td><td>戦闘開始</td></tr>
+  <tr><td><code>cast_start</code></td><td><code>entity</code>・<code>action</code>・<code>nth</code></td><td>その敵がその技の詠唱を始めた（<code>nth</code>：戦闘開始から何回目か）</td></tr>
+  <tr><td><code>hp_below</code></td><td><code>entity</code>・<code>percent</code></td><td>HP が〇% 以下になった</td></tr>
+  <tr><td><code>targetable</code></td><td><code>entity</code>・<code>state</code>・<code>nth</code></td><td>ターゲットできる（<code>true</code>）/ できなくなった（<code>false</code>）</td></tr>
+</table>
+<p>イベントの項目は <code>id</code>（プランから指す。全体で重ならない）・<code>name</code>・<code>t</code>・<code>cast</code>・<code>match</code>・<code>tolerance</code>（照合を受け付ける時刻のずれ。既定 5 秒）です。</p>
+
+<h2 id="plan">プランの書き方</h2>
+<p>ふつうは <a href="addon.html#plan">プラン編集</a> の画面で作れば十分です。手で書くときはこの形です。</p>
+<pre><code>return {
+    format = 1,
+    meta = { mapid = 9001, timeline = "9001_sample", timelineVersion = 1, job = "PLD", position = "MT" },
+    entries = {
+        {   -- 全体攻撃の着弾 3 秒前に、防御スキル A を自分に
+            id = "guard1", event = "p1_raidwide", ref = "hit", offset = -3.0, window = 3.0,
+            action = { id = 1001, type = 1 }, target = { type = "self" },
+            sound = "raidwide.wav",
+        },
+        {   -- 技 A のときだけ鳴らす（技 B なら「対象外」）
+            id = "ab_snd", event = "p1_ab", ref = "start", offset = 0.0,
+            onAction = 40002, sound = "left.wav",
+        },
+    },
+}</code></pre>
+<table>
+  <tr><th>項目</th><th>既定</th><th>説明</th></tr>
+  <tr><td><code>event</code></td><td></td><td>タイムラインのイベント ID</td></tr>
+  <tr><td><code>ref</code></td><td><code>"hit"</code></td><td>基準。<code>"start"</code>（詠唱開始）か <code>"hit"</code>（着弾）</td></tr>
+  <tr><td><code>offset</code></td><td><code>0</code></td><td>基準からの秒数（マイナスで前）</td></tr>
+  <tr><td><code>window</code></td><td><code>3.0</code></td><td>リキャスト中なら、この秒数のあいだ使えるようになるのを待つ</td></tr>
+  <tr><td><code>action</code></td><td></td><td><code>{ id = アクション ID, type = 1 }</code></td></tr>
+  <tr><td><code>target</code></td><td><code>self</code></td><td><code>self</code>（自分）・<code>target</code>（今のターゲット）・<code>entity</code>（<code>key</code> にタイムラインの敵のキー）</td></tr>
+  <tr><td><code>satisfiedBy</code></td><td></td><td><code>{ buffs = { 効果 ID } }</code>：その効果がもう出ていれば使わない</td></tr>
+  <tr><td><code>onAction</code></td><td></td><td>分岐のイベントで、来た技がこれ（数か配列）のときだけ</td></tr>
+  <tr><td><code>sound</code></td><td></td><td><code>"x.wav"</code>、または <code>{ file = "共通.wav", byAction = { [技 ID] = "y.wav" } }</code></td></tr>
+  <tr><td><code>execute</code></td><td><code>true</code></td><td><code>false</code> ならドライランだけ</td></tr>
+  <tr><td><code>priority</code></td><td><code>"weave"</code></td><td><code>"now"</code> にすると、ほかの動きより先に使う</td></tr>
+</table>
+<div class="tip">プランのファイル名を <code>&lt;ジョブ&gt;_ANY.lua</code> にすると、ポジションに関係なくそのジョブで使います。<code>&lt;ジョブ&gt;_&lt;ポジション&gt;.lua</code> があればそちらが先です。</div>
+
+<h2 id="share">共有するとき</h2>
+<ul>
+  <li>渡すのはタイムラインだけで大丈夫です。プランは人それぞれなので、受け取った人が自分で作ります。</li>
+  <li>直したら <code>meta.version</code> を上げてください。プランが作られた版と違うと、アドオンが注意を出します。</li>
+  <li>変換ツールが書き出したタイムラインの先頭のコメントには、使ったプル数や注意が書かれます。共有の前に、プレイの日時など残したくない情報が無いか確かめてください。</li>
+</ul>

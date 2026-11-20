@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RaidTimeline 変換ツール</title>
+  <!-- オフラインで動くよう同梱：daisyUI 5（ビルド済み CSS）＋ Tailwind CSS 4（ブラウザ版） -->
+  <link rel="stylesheet" href="static/daisyui.css">
+  <script src="static/tailwind.js"></script>
+  <style>
+    body { font-family: "Segoe UI", "Yu Gothic UI", "Meiryo", sans-serif; }
+    .mono { font-family: "Cascadia Mono", Consolas, "MS Gothic", monospace; }
+    .ev-off { opacity: .38; }
+    .ev-off .ev-name, .ev-off .ev-act { text-decoration: line-through; }
+    table.events td, table.events th { padding: 3px 6px; vertical-align: middle; white-space: nowrap; }
+    .badge { white-space: nowrap; }
+    table.events input.input { height: 1.6rem; min-height: 1.6rem; }
+    #preview { white-space: pre; }
+    .sticky-head th { position: sticky; top: 0; z-index: 1; }
+  </style>
+</head>
+<body class="bg-base-300 min-h-screen text-sm">
+
+  <!-- ヘッダー：開く -->
+  <div class="navbar bg-base-100 shadow px-4 sticky top-0 z-20 gap-2 min-h-12">
+    <div class="flex items-center gap-2 flex-1">
+      <span class="text-base font-bold">RaidTimeline</span>
+      <span class="badge badge-ghost badge-sm">変換ツール <span id="toolVer" class="opacity-70"></span></span>
+      <div class="join ml-4">
+        <button id="btnReplay" class="btn btn-sm btn-primary join-item">リプレイを開く</button>
+        <button id="btnLogs" class="btn btn-sm btn-secondary join-item">記録ログを開く</button>
+        <button id="btnBoth" class="btn btn-sm btn-info join-item" title="同じ戦闘のリプレイと記録ログを組にして、両方の情報でタイムラインを作ります">リプレイ＋記録ログを開く</button>
+        <div class="dropdown join-item">
+          <div tabindex="0" role="button" class="btn btn-sm btn-accent join-item">タイムラインを開く ▾</div>
+          <ul tabindex="0" id="tlMenu" class="dropdown-content menu bg-base-200 rounded-box z-30 w-72 p-2 shadow max-h-96 overflow-auto flex-nowrap"></ul>
+        </div>
+      </div>
+    </div>
+    <span id="busy" class="loading loading-spinner loading-sm hidden"></span>
+    <button id="btnSettings" class="btn btn-sm btn-ghost">設定</button>
+  </div>
+
+  <!-- タブ -->
+  <div class="px-4 pt-3">
+    <div id="tabs" role="tablist" class="tabs tabs-box tabs-sm bg-base-200 flex-wrap"></div>
+  </div>
+
+  <div id="empty" class="p-10 text-center opacity-70">
+    <p class="text-lg mb-2">リプレイ（.dat）・記録モードのログ（CSV）・既存のタイムラインを開いてください</p>
+    <p>同じ戦闘のリプレイと記録ログがあれば「リプレイ＋記録ログを開く」で、秒数はリプレイ、戦闘開始・ターゲット不可・技名は記録ログから取って作れます。</p>
+    <p>開いたものごとにタブができます。イベント名・技名・分岐・同期点・フェーズを直して、タイムラインを書き出します。</p>
+    <p id="emptyInfo" class="mt-4 mono text-xs"></p>
+  </div>
+
+  <!-- タブの中身 -->
+  <main id="main" class="hidden p-4 grid grid-cols-12 gap-4">
+
+    <!-- 左：材料（プル・戦闘・フェーズの区切り） -->
+    <section class="col-span-12 xl:col-span-3 2xl:col-span-3 flex flex-col gap-4 min-w-80">
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body p-4 gap-2">
+          <h2 class="card-title text-base" id="srcTitle">材料</h2>
+          <div id="srcBody"></div>
+        </div>
+      </div>
+      <div class="card bg-base-100 shadow-sm" id="phaseCard">
+        <div class="card-body p-4 gap-2">
+          <h2 class="card-title text-base">フェーズの区切り</h2>
+          <div id="phaseBody"></div>
+        </div>
+      </div>
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body p-4 gap-3">
+          <h2 class="card-title text-base">書き出し</h2>
+          <label class="form-control">
+            <span class="text-xs opacity-70">表示名（meta.name。日本語可）</span>
+            <input id="mName" class="input input-sm w-full">
+          </label>
+          <div class="grid grid-cols-2 gap-2">
+            <label><span class="text-xs opacity-70">作成者</span><input id="mAuthor" class="input input-sm w-full"></label>
+            <label><span class="text-xs opacity-70">改訂番号（version）</span><input id="mVersion" type="number" min="1" class="input input-sm w-full"></label>
+          </div>
+          <label>
+            <span class="text-xs opacity-70">ファイル名（英数字・_・-。先頭の mapid_ は自動）</span>
+            <div class="join w-full">
+              <span class="join-item btn btn-sm btn-disabled mono" id="fPrefix">0_</span>
+              <input id="fName" class="input input-sm join-item w-full mono">
+              <span class="join-item btn btn-sm btn-disabled mono">.lua</span>
+            </div>
+          </label>
+          <label>
+            <span class="text-xs opacity-70">書き出し先</span>
+            <div class="join w-full">
+              <input id="fDest" class="input input-sm join-item w-full mono text-xs">
+              <button id="btnDest" class="btn btn-sm join-item">選ぶ</button>
+            </div>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input id="fNames" type="checkbox" class="checkbox checkbox-sm" checked>
+            <span>直した技名を自分の names\actions.lua にも書く</span>
+          </label>
+          <div class="rounded border border-base-300 p-2 flex flex-col gap-1">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input id="fMigrate" type="checkbox" class="checkbox checkbox-sm">
+              <span>プランを新しいタイムラインに移す</span>
+            </label>
+            <div id="migrateOpts" class="flex flex-col gap-1 pl-6 hidden">
+              <label>
+                <span class="text-xs opacity-70">プランが今使っているタイムライン</span>
+                <select id="fSrc" class="select select-sm w-full mono"></select>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input id="fMoveOld" type="checkbox" class="checkbox checkbox-sm" checked>
+                <span class="text-xs">別名で書き出すときは、元のタイムラインを backup に移す</span>
+              </label>
+              <div class="text-xs opacity-70 leading-relaxed">
+                書き出す前に、エントリごとの付け替えを見せます。プランの前の版は <span class="mono">plans\&lt;mapid&gt;\backup\</span> にとっておきます（アドオンの「元に戻す」で戻せます）。
+              </div>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button id="btnPreview" class="btn btn-sm flex-1">プレビュー</button>
+            <button id="btnExport" class="btn btn-sm btn-primary flex-1">書き出す</button>
+          </div>
+          <div id="exportMsg"></div>
+          <div class="text-xs opacity-70 leading-relaxed">
+            上書きするときは、前の版を書き出し先の <span class="mono">backup\</span> に 10 世代とっておきます。
+            書き出したファイルは、アドオンと同じ書き方の読み取りで読み直して確かめます。
+          </div>
+        </div>
+      </div>
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body p-4 gap-2">
+          <h2 class="card-title text-base">敵（entities）</h2>
+          <div id="entBody"></div>
+        </div>
+      </div>
+      <div id="warnBox"></div>
+    </section>
+
+    <!-- 中央：イベントの一覧 -->
+    <section class="col-span-12 xl:col-span-9 2xl:col-span-9 flex flex-col gap-4 min-w-0" id="phasesBox"></section>
+
+  </main>
+
+  <!-- プランを移す（スレッド #9） -->
+  <dialog id="dlgMigrate" class="modal">
+    <div class="modal-box w-11/12 max-w-5xl">
+      <h3 class="font-bold mb-1" id="mgTitle">プランを移す</h3>
+      <div id="mgBody" class="text-sm max-h-[65vh] overflow-auto"></div>
+      <div class="modal-action">
+        <form method="dialog" class="flex gap-2">
+          <button class="btn btn-sm">やめる</button>
+          <button id="mgOk" class="btn btn-sm btn-primary" value="ok">書き出して移す</button>
+        </form>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+
+  <!-- プレビュー -->
+  <dialog id="dlgPreview" class="modal">
+    <div class="modal-box w-11/12 max-w-6xl">
+      <h3 class="font-bold mb-1" id="pvTitle">プレビュー</h3>
+      <div id="pvCheck" class="mb-2"></div>
+      <div class="bg-base-300 rounded p-3 max-h-[70vh] overflow-auto"><div id="preview" class="mono text-xs"></div></div>
+      <div class="modal-action"><form method="dialog"><button class="btn btn-sm">閉じる</button></form></div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
+
+  <!-- 設定 -->
+  <dialog id="dlgSettings" class="modal">
+    <div class="modal-box max-w-2xl">
+      <h3 class="font-bold mb-3">設定</h3>
+      <div id="sFirst" class="alert alert-warning text-sm mb-3 hidden">アドオンのフォルダが見つかりませんでした。MMOminion の <span class="mono">LuaMods\RaidTimeline</span> を「選ぶ」で指定して「保存」してください（次からはこの場所を使います）。</div>
+      <label class="block mb-3">
+        <span class="text-xs opacity-70">アドオンのフォルダ（LuaMods\RaidTimeline）。timelines・logs・names をここから使います</span>
+        <div class="join w-full">
+          <input id="sLuamods" class="input input-sm join-item w-full mono text-xs">
+          <button id="btnLuamods" class="btn btn-sm join-item">選ぶ</button>
+        </div>
+      </label>
+      <label class="block mb-3">
+        <span class="text-xs opacity-70">リプレイのフォルダ（最初に開く場所）</span>
+        <input id="sReplay" class="input input-sm w-full mono text-xs">
+      </label>
+      <label class="block mb-3">
+        <span class="text-xs opacity-70">作成者（新しく作るタイムラインの meta.author）</span>
+        <input id="sAuthor" class="input input-sm w-full">
+      </label>
+      <div id="sInfo" class="text-xs opacity-80 mono"></div>
+      <div class="modal-action">
+        <form method="dialog" class="flex gap-2"><button class="btn btn-sm">閉じる</button></form>
+        <button id="btnSaveSettings" class="btn btn-sm btn-primary">保存</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 知らせ -->
+  <div class="toast toast-end z-50" id="toasts"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

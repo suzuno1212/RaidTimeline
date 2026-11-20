@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
+<meta name="googlebot" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>RaidTimeline</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%237482ff'/%3E%3Cpath d='M5 7h9M5 12h14M5 17h6' stroke='%230d0f26' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="index.html"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#0d0f26" stroke-width="2.4" stroke-linecap="round"><path d="M4 6h10M4 12h16M4 18h7"/><circle cx="18" cy="6" r="1.6" fill="#0d0f26"/><circle cx="15" cy="18" r="1.6" fill="#0d0f26"/></svg></span>RaidTimeline</a>
+  <nav class="topnav"><a href="start.html">はじめかた</a><a href="addon.html">アドオン</a><a href="converter.html">変換ツール</a><a href="timeline.html">タイムラインとプラン</a><a href="faq.html">困ったとき</a></nav>
+  <span class="spacer"></span>
+  <a class="btn primary" href="https://github.com/suzuno1212/RaidTimeline/releases/latest">ダウンロード</a>
+</header>
+<!-- title:ホーム -->
+<section class="hero">
+  <div>
+    <span class="badge acc">Lua アドオン ＋ Windows 用ツール</span>
+    <h1 style="margin-top:14px">ボス戦を、<br><span class="grad">タイムラインで先回り。</span></h1>
+    <p>RaidTimeline は、ボスの技が「いつ・何が来るか」をタイムラインで先読みして、軽減のアクションや合図の音を、決めておいた時刻に出してくれる戦闘補助のアドオンです。タイムラインは付属の変換ツールで、リプレイや記録ログから作れます。</p>
+    <div class="cta">
+      <a class="btn primary" href="start.html">はじめかた</a>
+      <a class="btn" href="https://github.com/suzuno1212/RaidTimeline/releases/latest">最新版をダウンロード</a>
+    </div>
+  </div>
+  <div class="shot">
+    <img src="img/addon_dryrun.webp" alt="ドライランの画面" style="max-height:520px;object-fit:cover;object-position:top">
+    <img class="float" src="img/addon_tv.webp" alt="タイムライン表示">
+  </div>
+</section>
+
+<section class="section">
+  <h2>できること</h2>
+  <p class="sub">配るのは 2 つ。ゲームの中で動く <b>アドオン</b> と、PC で使う <b>変換ツール</b> です。</p>
+  <div class="grid three">
+    <div class="card feature"><div class="icon">⏱</div><h3>タイムライン表示</h3><p>次に来る技を、技名・着弾までの秒数・残り時間のバーで並べます。分岐する技は「A / B」、詠唱が始まれば実際の技名に変わります。</p></div>
+    <div class="card feature"><div class="icon">🛡</div><h3>軽減を自動で（oGCD）</h3><p>「全体攻撃の 3 秒前に防御スキル」のような約束（プラン）どおりに、アビリティを自動で使います。まずはドライラン（使ったことにするだけ）で確かめられます。</p></div>
+    <div class="card feature"><div class="icon">🔔</div><h3>合図の音（wav）</h3><p>決めた時刻に wav を鳴らします。ランダムで技が変わる所は、来た技ごとに別の音を鳴らせます。</p></div>
+    <div class="card feature"><div class="icon">✍</div><h3>ゲームの中でプラン編集</h3><p>タイムラインの技ごとに、使うアクション・タイミング・対象・音を画面で決めます。戦闘中に直してもすぐ反映し、前の版に戻せます。</p></div>
+    <div class="card feature"><div class="icon">⏺</div><h3>記録モード</h3><p>戦闘中の敵の詠唱・HP・ターゲット可否などを 1 プル 1 ファイルで記録します。変換ツールで、正確なタイムラインの材料になります。</p></div>
+    <div class="card feature"><div class="icon">🧭</div><h3>変換ツール</h3><p>リプレイと記録ログを何プル分もまとめて読み、ランダム・順番の入れ替わり・流れの分岐・火力で変わるフェーズを見分けて、タイムラインを書き出します。</p></div>
+  </div>
+</section>
+
+<section class="section flow">
+  <h2>使い方の流れ</h2>
+  <p class="sub">タイムラインは「戦闘の台本」、プランは「自分の動きの約束」。この 2 つをそろえると、アドオンが戦闘に合わせて動きます。</p>
+  <svg viewBox="0 0 1180 300" role="img" aria-label="記録・リプレイから変換ツールでタイムラインを作り、プランと合わせてアドオンが動く流れ">
+    <defs>
+      <linearGradient id="g1" x1="0" x2="1"><stop offset="0" stop-color="#7482ff"/><stop offset="1" stop-color="#c4a8ff"/></linearGradient>
+      <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5d6878"/></marker>
+    </defs>
+    <style>
+      .bx{fill:#232a33;stroke:#333c47;stroke-width:1.5}
+      .hl{fill:#232a33;stroke:url(#g1);stroke-width:2}
+      .t1{fill:#dfe4ec;font:700 17px 'Noto Sans JP','Hiragino Sans','Yu Gothic UI',sans-serif}
+      .t2{fill:#95a0ad;font:13px 'Noto Sans JP','Hiragino Sans','Yu Gothic UI',sans-serif}
+      .ln{stroke:#5d6878;stroke-width:2;fill:none;marker-end:url(#ar)}
+      .tag{fill:#7482ff;font:700 12px 'Noto Sans JP',sans-serif;letter-spacing:.08em}
+    </style>
+    <rect class="bx" x="10" y="20" width="230" height="110" rx="14"/>
+    <text class="tag" x="30" y="48">ゲームの中</text><text class="t1" x="30" y="78">記録モード</text><text class="t2" x="30" y="104">戦闘を 1 プル 1 ファイルで記録</text>
+    <rect class="bx" x="10" y="170" width="230" height="110" rx="14"/>
+    <text class="tag" x="30" y="198">ゲームの機能</text><text class="t1" x="30" y="228">リプレイ（.dat）</text><text class="t2" x="30" y="254">何プル分も入った録画</text>
+    <rect class="hl" x="310" y="95" width="250" height="110" rx="14"/>
+    <text class="tag" x="330" y="123">PC</text><text class="t1" x="330" y="153">変換ツール</text><text class="t2" x="330" y="179">プルを比べてタイムラインを作る</text>
+    <rect class="bx" x="630" y="20" width="240" height="110" rx="14"/>
+    <text class="tag" x="650" y="48">共有できる</text><text class="t1" x="650" y="78">タイムライン</text><text class="t2" x="650" y="104">いつ・何の技が来るか</text>
+    <rect class="bx" x="630" y="170" width="240" height="110" rx="14"/>
+    <text class="tag" x="650" y="198">自分用</text><text class="t1" x="650" y="228">プラン</text><text class="t2" x="650" y="254">どの技に・何を・いつ使うか</text>
+    <rect class="hl" x="940" y="95" width="230" height="110" rx="14"/>
+    <text class="tag" x="960" y="123">ゲームの中</text><text class="t1" x="960" y="153">アドオンが動く</text><text class="t2" x="960" y="179">表示・ドライラン・実行・音</text>
+    <path class="ln" d="M240,75 C280,75 280,130 306,138"/>
+    <path class="ln" d="M240,225 C280,225 280,170 306,162"/>
+    <path class="ln" d="M560,140 C595,140 595,75 626,75"/>
+    <path class="ln" d="M750,130 L750,166"/>
+    <text class="t2" x="760" y="153">プラン編集の画面で作る</text>
+    <path class="ln" d="M870,75 C905,75 905,130 936,138"/>
+    <path class="ln" d="M870,225 C905,225 905,170 936,162"/>
+  </svg>
+</section>
+
+<section class="section">
+  <h2>ダウンロード</h2>
+  <p class="sub">GitHub の <a href="https://github.com/suzuno1212/RaidTimeline/releases/latest">Releases</a> に、毎回 2 つの zip を置いています。</p>
+  <div class="dl">
+    <div class="card"><h3>アドオン <span class="badge">RaidTimeline-addon-*.zip</span></h3><p>LuaMods フォルダに入れるだけ。サンプルのタイムラインが 2 つ付いています。</p><a class="btn" href="start.html#addon">入れ方を見る</a></div>
+    <div class="card"><h3>変換ツール <span class="badge">RaidTimelineTool-*-win64.zip</span></h3><p>Windows 10 / 11 用。展開して exe を起動するだけで、Python は要りません。</p><a class="btn" href="start.html#tool">入れ方を見る</a></div>
+  </div>
+  <div class="warn" style="margin-top:22px">このアドオンとツールは、作者が個人で作ったものです。使うかどうか・どう使うかは、ご自身の判断と責任でお願いします。動作の保証はありません（MIT License）。</div>
+</section>
+<footer>RaidTimeline ・ MIT License ・ 作者 suzu ・ <a href="https://github.com/suzuno1212/RaidTimeline">GitHub</a></footer>
+<script src="assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
+<meta name="googlebot" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>困ったとき ｜ RaidTimeline</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%237482ff'/%3E%3Cpath d='M5 7h9M5 12h14M5 17h6' stroke='%230d0f26' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="index.html"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#0d0f26" stroke-width="2.4" stroke-linecap="round"><path d="M4 6h10M4 12h16M4 18h7"/><circle cx="18" cy="6" r="1.6" fill="#0d0f26"/><circle cx="15" cy="18" r="1.6" fill="#0d0f26"/></svg></span>RaidTimeline</a>
+  <nav class="topnav"><a href="start.html">はじめかた</a><a href="addon.html">アドオン</a><a href="converter.html">変換ツール</a><a href="timeline.html">タイムラインとプラン</a><a href="faq.html" class="on">困ったとき</a></nav>
+  <span class="spacer"></span>
+  <a class="btn primary" href="https://github.com/suzuno1212/RaidTimeline/releases/latest">ダウンロード</a>
+</header>
+<div class="layout"><aside class="side"><h4>このページ</h4><a href="#addon">アドオン</a><a href="#tool">変換ツール</a><a href="#files">ファイルの場所のまとめ</a><a href="#report">不具合を見つけたら</a><h4>ほかのページ</h4><a href="index.html">ホーム</a><a href="start.html">はじめかた</a><a href="addon.html">アドオン</a><a href="converter.html">変換ツール</a><a href="timeline.html">タイムラインとプラン</a></aside><main><!-- title:困ったとき -->
+<h1>困ったとき</h1>
+<p class="lead">よくあることと、見るところ。</p>
+
+<h2 id="addon">アドオン</h2>
+<h3>メニューに RaidTimeline が出ない</h3>
+<ul>
+  <li><code>LuaMods\RaidTimeline\module.def</code> と <code>RaidTimeline.lua</code> が同じフォルダにあるか確かめてください（zip を展開して <code>RaidTimeline\RaidTimeline\</code> と二重になっていることがあります）。</li>
+  <li>Lua を読み込み直してください。コンソールに <code>[RaidTimeline]</code> で始まる行が出ていれば読み込めています。</li>
+</ul>
+<h3>ドライランの画面に何も出ない</h3>
+<ul>
+  <li>「ドライラン」が ON か。</li>
+  <li><code>timelines\</code> に、今のマップの <code>&lt;mapid&gt;_*.lua</code> があるか。画面の「タイムライン」に「なし」と出ていれば、ありません。</li>
+  <li>戦闘開始のとき、タイムラインの敵がターゲットできる状態か（道中の雑魚では動きません）。</li>
+</ul>
+<h3>時刻がずれる・照合されない</h3>
+<ul>
+  <li>1 プルだけで作ったタイムラインは、ばらつきが分かりません。プルを増やして作り直すと安定します。</li>
+  <li>ギミックや火力で長さが変わる所は、変換ツールでフェーズを区切ってください（<a href="converter.html#phases">フェーズを区切る</a>）。</li>
+  <li><code>logs\&lt;mapid&gt;\</code> の判定のログに、照合・同期・未照合が残ります。</li>
+</ul>
+<h3>アクションを使わない</h3>
+<ul>
+  <li>「実行する（oGCD）」が ON か、一時停止中でないか、そのエントリの「実行」が外れていないか。</li>
+  <li>判定の結果を見てください。「同等効果あり」「直前に使用済み」「リキャスト中」なら、そのとおりの理由です。</li>
+  <li>ウェポンスキル・魔法（GCD）は使いません（アビリティだけ）。</li>
+</ul>
+<h3>音が鳴らない</h3>
+<ul>
+  <li>「音を鳴らす」と「ドライラン」の両方が ON か。</li>
+  <li>wav が <code>RaidTimeline\wav\</code> にあり、ファイル名・フォルダのパスが英数字だけか。</li>
+  <li>ドライランの画面の「音」の「テスト再生」で鳴るか。</li>
+</ul>
+<h3>プランを壊してしまった</h3>
+<p>プラン編集の「元に戻す」、または <code>plans\&lt;mapid&gt;\backup\</code> から前の版をコピーして戻せます（10 世代）。</p>
+
+<h2 id="tool">変換ツール</h2>
+<h3>起動しない・画面が白い</h3>
+<ul>
+  <li>Microsoft Edge WebView2 ランタイムを入れてください（Microsoft の公式サイトから「Evergreen」版）。</li>
+  <li>zip のまま起動していないか（展開してから起動します）。</li>
+</ul>
+<h3>アドオンのフォルダが見つからない</h3>
+<p>設定の「LuaMods\RaidTimeline」の「選ぶ」で指定して「保存」してください。次からはその場所を使います。</p>
+<h3>リプレイを開くとエラー・敵が出ない</h3>
+<ul>
+  <li>ゲームの大きな更新のあとは、リプレイの中身の形が変わって読めないことがあります。その場合は新しい版のツールを待ってください。記録ログだけでも作れます。</li>
+  <li>リプレイに戦闘が入っていないと（入ってすぐ抜けた など）、何も出ません。</li>
+</ul>
+<h3>「別のコンテンツのファイルが混ざっています」</h3>
+<p>リプレイ＋記録ログで、別のマップの記録ログを選んでいます。そのファイルは使われません。気になるなら選び直してください。</p>
+
+<h2 id="files">ファイルの場所のまとめ</h2>
+<pre><code>LuaMods\RaidTimeline\
+├─ RaidTimeline.lua, module.def   … アドオン本体（更新で上書き）
+├─ settings.lua                   … 設定（自動で作られる）
+├─ timelines\&lt;mapid&gt;_*.lua        … タイムライン
+├─ plans\&lt;mapid&gt;\&lt;ジョブ&gt;_&lt;ポジション&gt;.lua
+│  └─ backup\                     … プランの前の版
+├─ logs\&lt;mapid&gt;\                  … 記録・判定のログ（1 プル 1 ファイル）
+├─ names\actions.lua              … 自分で直した技名（変換ツール）
+└─ wav\                           … 音</code></pre>
+
+<h2 id="report">不具合を見つけたら</h2>
+<p>GitHub の <a href="https://github.com/suzuno1212/RaidTimeline/issues">Issues</a> へ。何をしたか・どうなったか・アドオンとツールの版を書いてください。ログやリプレイを貼るときは、キャラクター名など個人が分かる情報が入っていないか確かめてください。</p>
+<div class="pager"><a href="timeline.html"><small>前へ</small>タイムラインとプラン</a><span></span></div></main></div>
+<footer>RaidTimeline ・ MIT License ・ 作者 suzu ・ <a href="https://github.com/suzuno1212/RaidTimeline">GitHub</a></footer>
+<script src="assets/site.js"></script>
+</body>
+</html>

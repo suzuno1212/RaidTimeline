@@ -1,0 +1,71 @@
+<!-- title:はじめかた -->
+<h1>はじめかた</h1>
+<p class="lead">アドオンを入れて、付属のサンプルでドライランを動かすところまで。だいたい 5 分です。</p>
+
+<h2 id="need">用意するもの</h2>
+<table>
+  <tr><th>もの</th><th>説明</th></tr>
+  <tr><td>Lua アドオンを動かす環境</td><td><code>LuaMods</code> フォルダにアドオンを置いて動かすタイプのもの。このアドオンはその上で動きます。</td></tr>
+  <tr><td>Windows 10 / 11</td><td>変換ツールを使うとき。画面の表示に Microsoft Edge WebView2 ランタイムを使います（Windows 11 なら最初から入っています）。</td></tr>
+  <tr><td>wav ファイル（任意）</td><td>音を鳴らしたいとき。手持ちの短い効果音で大丈夫です。</td></tr>
+</table>
+
+<h2 id="addon">アドオンを入れる</h2>
+<ol class="steps">
+  <li><b>zip をダウンロード</b>
+    <a href="https://github.com/suzuno1212/RaidTimeline/releases/latest">Releases</a> から <code>RaidTimeline-addon-&lt;版&gt;.zip</code> をダウンロードします。</li>
+  <li><b>LuaMods に展開</b>
+    中の <code>RaidTimeline</code> フォルダごと、<code>LuaMods</code> フォルダに置きます。次の形になれば OK です。
+<pre><code>LuaMods\
+└─ RaidTimeline\
+   ├─ RaidTimeline.lua
+   ├─ module.def
+   └─ timelines\
+      ├─ 1323_draft.lua
+      └─ 1325_draft.lua</code></pre>
+    <code>logs</code>・<code>plans</code>・<code>wav</code> などのフォルダは、使ったときにアドオンが作ります。</li>
+  <li><b>読み込み直す</b>
+    Lua を読み込み直す（または起動し直す）と、上のメニューに <b>RaidTimeline</b> が出ます。</li>
+</ol>
+
+<h2 id="menu">メニュー</h2>
+<p>メニューの <b>RaidTimeline</b> から 4 つの画面を開けます。</p>
+<table>
+  <tr><th>メニュー</th><th>画面</th><th>使うとき</th></tr>
+  <tr><td><code>Recorder</code></td><td>記録モード・設定</td><td>戦闘を記録する（変換ツールの材料）。</td></tr>
+  <tr><td><code>Dry-run</code></td><td>ドライラン</td><td>タイムラインとプランで動かす。実行・音のスイッチ、判定の結果、各種の設定。</td></tr>
+  <tr><td><code>Timeline</code></td><td>タイムライン表示</td><td>次に来る技を、残り時間のバーで見る。</td></tr>
+  <tr><td><code>Plan</code></td><td>プラン編集</td><td>技ごとに、使うアクションや音を決める。</td></tr>
+</table>
+<div class="tip">キーの割り当てに <b>RaidTimeline Pause</b> が増えます。キーを割り当てておくと、戦闘中に「実行」をすぐ一時停止・再開できます。</div>
+
+<h2 id="try">サンプルで試す</h2>
+<p>付属のサンプルは 2 つ（mapid <code>1323</code> と <code>1325</code>）です。</p>
+<ol class="steps">
+  <li><b>ドライランを ON</b>
+    <code>Dry-run</code> の画面で「ドライラン」を ON にします。「実行する（oGCD）」は OFF のままにしておきます（使ったことにするだけ）。</li>
+  <li><b>プランを作る</b>
+    <code>Plan</code> の画面の「プランを選ぶ」で、マップとジョブを選んで「… を作る」を押します。技の行の「追加」から、使うアクションと秒数を決めます（<a href="addon.html#plan">プラン編集</a>）。</li>
+  <li><b>戦ってみる</b>
+    そのコンテンツに入って戦うと、ドライランの画面に「いつ・何を・どうした」が並びます。思ったとおりなら「実行する（oGCD）」を ON にします。</li>
+</ol>
+<div class="warn">最初はかならずドライランで確かめてから、実行を ON にしてください。タイムラインがずれていると、意図しない時刻にアクションを使います。</div>
+
+<h2 id="tool">変換ツールを入れる</h2>
+<ol class="steps">
+  <li><b>zip をダウンロードして展開</b>
+    <code>RaidTimelineTool-&lt;版&gt;-win64.zip</code> を好きな場所（例：<code>C:\Tools\RaidTimelineTool</code>）に展開します。</li>
+  <li><b>exe を起動</b>
+    <code>RaidTimelineTool.exe</code> を起動します。初めてのときは「発行元が不明」の確認が出ることがあります（署名していないため）。</li>
+  <li><b>はじめの設定</b>
+    アドオンのフォルダ（<code>LuaMods\RaidTimeline</code>）は、C〜Z ドライブから自動で探します。見つからなかったときは設定の画面が開くので、「選ぶ」で指定して「保存」します。</li>
+</ol>
+<figure class="narrow"><img src="img/tool_start.webp" alt="変換ツールの最初の画面"><figcaption>変換ツールの最初の画面。ここから材料を開きます。</figcaption></figure>
+<p>使い方は <a href="converter.html">変換ツール</a> のページへ。</p>
+
+<h2 id="update">新しい版にする</h2>
+<ul>
+  <li><b>アドオン</b>：<code>RaidTimeline.lua</code> と <code>module.def</code> を上書きします。<code>timelines</code>・<code>plans</code>・<code>logs</code>・<code>wav</code>・<code>settings.lua</code> は自分のものなので、そのまま残してください。</li>
+  <li><b>変換ツール</b>：フォルダごと入れ替えます。設定は exe の隣の <code>RaidTimelineTool_settings.json</code> にあるので、新しいフォルダにコピーすれば引き継げます。</li>
+  <li>何が変わったかは <a href="https://github.com/suzuno1212/RaidTimeline/blob/main/CHANGELOG.md">CHANGELOG</a> にあります。</li>
+</ul>

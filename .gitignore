@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.vs/
+.vscode/
+build/
+dist/
+*.zip
+# 個人のもの（公開しない）
+converter/ui/settings.json
+RaidTimelineTool_settings.json
+addon/RaidTimeline/settings.lua
+addon/RaidTimeline/logs/
+addon/RaidTimeline/plans/
+addon/RaidTimeline/names/
+addon/RaidTimeline/wav/
+*.dat
+*.csv

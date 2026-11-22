@@ -1,6 +1,14 @@
 -- =====================================================================
--- RaidTimeline（仮称）  v0.6.8  記録モード ＋ ドライラン ＋ 実行（oGCD） ＋ 音（wav） ＋ タイムライン表示 ＋ プラン編集
+-- RaidTimeline（仮称）  v0.6.9  記録モード ＋ ドライラン ＋ 実行（oGCD） ＋ 音（wav） ＋ タイムライン表示 ＋ プラン編集
 --
+-- v0.6.9：同じマップに前半・後半などのタイムラインが複数あるとき（1327_x_p1.lua・1327_x_p2.lua など）：
+--         ・戦闘開始のとき、パーティが最初に攻撃した敵（ターゲット）が、どのタイムラインの「始まりの敵」かで選ぶ
+--           （始まりの敵＝戦闘開始のフェーズで最初の 30 秒に詠唱する敵。v0.6.8 までは entities の敵がいる最初のものだったので、
+--           前半のタイムラインに後半のボスが entities に入っていると、後半でも前半のタイムラインのままだった）
+--         ・戦闘の途中で、ほかのタイムラインの始まりの敵の HP が初めて減ったら、そのタイムラインに引き継ぐ
+--           （前半から後半へ続けて進んだとき。ドライランのログは <日時>_2_dryrun.csv に分かれる）
+--         ・プランの meta.timeline がこのマップのほかのタイムラインなら、「違います」の注意を出さない
+--         ・ドライランの「読み直す」・プラン編集の「読み直す」で、プラン編集のタイムラインの一覧も作り直す
 -- v0.6.8：分岐（match.action が配列）のイベントのエントリに onAction（来たアクションがこれのときだけ使う）。
 --         照合を待ってから判定する（照合が予定より遅ければ、照合したときに判定）。来なかった方は「対象外（別の分岐）」。
 --         プラン編集の編集欄に「分岐」の行（どれが来ても／アクションごと）。音の byAction（v0.4.0）はそのまま。
@@ -86,7 +94,7 @@
 
 RTL = RTL or {}
 
-RTL.version = "0.6.8"
+RTL.version = "0.6.9"
 RTL.path = GetLuaModsPath().."\\RaidTimeline"
 
 -- 設定（settings.lua に保存されるのは record・window・dryrun・execute・position・dryWindow・sound・soundLead・soundMode・soundDir と、
@@ -2414,6 +2422,8 @@ RTL.TL = {
     entryWindow  = 3.0,    -- エントリの window の既定
     recentSec    = 10.0,   -- recentSec の既定
     recentRows   = 8,      -- 画面に出す直近の結果の数
+    openSec      = 30.0,   -- 始まりの敵：戦闘開始のフェーズで、最初の詠唱から何秒までに詠唱する敵か（v0.6.9）
+    handoffLeadSec = 1.3,  -- 引き継ぎ：HP が初めて減った時刻の何秒前を t0 にするか（記録ログ：最初の攻撃から HP が減るまで 1.2〜1.4 秒）
     positions    = { "MT", "ST", "H1", "H2", "D1", "D2", "D3", "D4" },
     COLUMNS      = "t,clock,phase,kind,ref,action,planned,actual,diff,result,detail",
 }
@@ -2670,11 +2680,98 @@ function RTL_TL_Present(c)
     return false
 end
 
-function RTL_TL_PickForCombat()
+-- 始まりの敵（v0.6.9）：戦闘開始のフェーズで、最初の詠唱から openSec 秒までに詠唱する敵の contentid。
+--   詠唱が 1 つも無ければ entities の全部
+function RTL_TL_OpeningCids(c)
+    if (c.openCids) then
+        return c.openCids
+    end
+    local set, minT = {}, nil
+    for _, ph in ipairs(c.tl.phases) do
+        if (ph.trigger.type == "combat_start") then
+            for _, ev in ipairs(ph.events) do
+                if (ev.match and ev.match.cid and (minT == nil or ev.t < minT)) then minT = ev.t end
+            end
+        end
+    end
+    if (minT) then
+        for _, ph in ipairs(c.tl.phases) do
+            if (ph.trigger.type == "combat_start") then
+                for _, ev in ipairs(ph.events) do
+                    if (ev.match and ev.match.cid and ev.t <= minT + RTL.TL.openSec) then set[ev.match.cid] = true end
+                end
+            end
+        end
+    end
+    if (next(set) == nil) then
+        for _, cid in pairs(c.prep.entityCid) do set[cid] = true end
+    end
+    c.openCids = set
+    return set
+end
+
+-- 戦闘開始のときにパーティが攻撃している敵の contentid（v0.6.9）：最初の敵対アクションの対象・HP が減った敵・自分のターゲット
+function RTL_TL_EngagedCids(now)
     local T = RTL.tl
+    local set = {}
+    local h = RTL_FirstHostile(now)
+    if (h and h.hcid) then set[h.hcid] = true end
+    if (T.preDropCid and T.preDropMs and now - T.preDropMs <= 5000) then set[T.preDropCid] = true end
+    local t = nil
+    pcall(function() t = Player:GetTarget() end)
+    if (type(t) == "table" and t.attackable and type(t.contentid) == "number") then set[t.contentid] = true end
+    return set
+end
+
+-- 始まりの敵が、ターゲット可能・攻撃可能でそこにいるか
+function RTL_TL_OpeningPresent(c)
+    for cid in pairs(RTL_TL_OpeningCids(c)) do
+        local el = EntityList("contentid="..cid)
+        if (el) then
+            for _, e in pairs(el) do
+                if (e.targetable and e.attackable) then
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
+
+-- 戦闘開始のとき、使うタイムラインを決める（v0.6.9）。
+--   1. 攻撃している敵が始まりの敵のタイムライン（今のもの → ほか）
+--   2. 始まりの敵がいるタイムライン（今のもの → ほか。ボタンで選んだときは今のものだけ）
+--   3. entities の敵がいるタイムライン（v0.6.8 までと同じ）
+function RTL_TL_PickForCombat(now)
+    local T = RTL.tl
+    now = now or RTL_Now()
     local curc = nil
     for _, c in ipairs(T.cands) do
         if (c.tl and c.file == T.file) then curc = c end
+    end
+    local function use(c)
+        if (c ~= curc) then
+            RTL_TL_UseTimeline(c)
+            RTL_TL_LoadPlan()
+        end
+        return true
+    end
+    local eng = RTL_TL_EngagedCids(now)
+    local function engaged(c)
+        for cid in pairs(RTL_TL_OpeningCids(c)) do
+            if (eng[cid]) then return true end
+        end
+        return false
+    end
+    if (curc and engaged(curc)) then return true end
+    for _, c in ipairs(T.cands) do
+        if (c.tl and c ~= curc and engaged(c)) then return use(c) end
+    end
+    if (curc and RTL_TL_OpeningPresent(curc)) then return true end
+    if (not T.manualPick) then
+        for _, c in ipairs(T.cands) do
+            if (c.tl and c ~= curc and RTL_TL_OpeningPresent(c)) then return use(c) end
+        end
     end
     if (curc and RTL_TL_Present(curc)) then
         return true
@@ -2683,13 +2780,52 @@ function RTL_TL_PickForCombat()
         return false
     end
     for _, c in ipairs(T.cands) do
-        if (c.tl and c ~= curc and RTL_TL_Present(c)) then
-            RTL_TL_UseTimeline(c)
-            RTL_TL_LoadPlan()
-            return true
-        end
+        if (c.tl and c ~= curc and RTL_TL_Present(c)) then return use(c) end
     end
     return false
+end
+
+-- 引き継ぎ先（v0.6.9）：HP が初めて減った敵（cid）が、ほかのタイムラインの始まりの敵で、今のタイムラインの始まりの敵ではない
+function RTL_TL_HandoffTarget(cid)
+    local T = RTL.tl
+    local pull = T.pull
+    if (not pull or #T.cands < 2) then
+        return nil
+    end
+    local curc = nil
+    for _, c in ipairs(T.cands) do
+        if (c.tl and c.file == T.file) then curc = c end
+    end
+    if (not curc or RTL_TL_OpeningCids(curc)[cid]) then
+        return nil
+    end
+    for _, c in ipairs(T.cands) do
+        if (c.tl and c ~= curc and not (pull.chain and pull.chain[c.file]) and RTL_TL_OpeningCids(c)[cid]) then
+            return c
+        end
+    end
+    return nil
+end
+
+-- 戦闘の途中でタイムラインを引き継ぐ（v0.6.9。前半から後半へ続けて進んだとき）：
+--   今のプルを「引き継ぎ」で終え、そのタイムラインとプランで新しいプルを始める（t0 = HP が減った時刻 − handoffLeadSec）
+function RTL_TL_Handoff(c, ms, why)
+    local T = RTL.tl
+    local old = T.pull
+    local chain = {}
+    for f in pairs(old.chain or {}) do chain[f] = true end
+    chain[T.file] = true
+    local n = (old.part or 1) + 1
+    local base = old.baseStamp or old.stamp
+    local hitIds = old.hitIds
+    RTL_TL_Row("handoff", { ms = ms, ref = c.file, result = "handoff", detail = why })
+    RTL_TL_Recent(string.format("[%s] %s に引き継ぎ（%s）", RTL_TL_FmtT(ms), c.file, why))
+    RTL_TL_EndPull(ms, "handoff")
+    RTL_TL_UseTimeline(c)
+    RTL_TL_LoadPlan()
+    RTL_TL_StartPull(ms, { t0Ms = ms - RTL.TL.handoffLeadSec * 1000, t0src = "handoff",
+        stamp = base.."_"..n, baseStamp = base, part = n, chain = chain, hitIds = hitIds })
+    RTL_Msg("timeline handoff -> "..c.file.."  ("..why..")")
 end
 
 function RTL_TL_LoadPlan()
@@ -2727,10 +2863,15 @@ function RTL_TL_LoadPlan()
             end
             local meta = plan.meta or {}
             local stem = T.file and T.file:gsub("%.lua$", "")
-            if (meta.timeline and stem and meta.timeline ~= stem) then
+            -- このマップのほかのタイムライン（前半・後半など）を指すプランは、そのまま使う（v0.6.9）
+            local sibling = false
+            for _, c in ipairs(T.cands or {}) do
+                if (meta.timeline and c.file:gsub("%.lua$", "") == meta.timeline) then sibling = true end
+            end
+            if (meta.timeline and stem and meta.timeline ~= stem and not sibling) then
                 T.planWarn[#T.planWarn + 1] = "プランのタイムライン「"..tostring(meta.timeline).."」と読み込んだ「"..stem.."」が違います"
             end
-            if (meta.timelineVersion and T.timeline.meta.version and meta.timelineVersion ~= T.timeline.meta.version) then
+            if (meta.timeline == stem and meta.timelineVersion and T.timeline.meta.version and meta.timelineVersion ~= T.timeline.meta.version) then
                 T.planWarn[#T.planWarn + 1] = "タイムラインの改訂番号が違います（プラン "..tostring(meta.timelineVersion)..
                     "・タイムライン "..tostring(T.timeline.meta.version).."）"
             end
@@ -2811,6 +2952,10 @@ function RTL_TL_Reload(mapid, fileName)
     T.tgState, T.hpLast, T.cidOf, T.preCasts, T.preDropMs = {}, {}, {}, {}, nil
     RTL_TL_LoadTimeline(mapid, fileName)
     RTL_TL_LoadPlan()
+    -- プラン編集のタイムライン・プランの一覧も作り直す（タイムラインを足した・消したとき。v0.6.9）
+    if (RTL.pe) then
+        RTL.pe.planList, RTL.pe.tlCache = nil, nil
+    end
 end
 
 -- =====================================================================
@@ -2951,10 +3096,10 @@ function RTL_TL_Recent(text)
     end
 end
 
-function RTL_TL_StartPull(now)
+function RTL_TL_StartPull(now, opt)
     local T = RTL.tl
     local mapid = T.mapid
-    local stamp = (RTL.pull and RTL.pull.stamp) or os.date("%Y%m%d_%H%M%S")
+    local stamp = (opt and opt.stamp) or (RTL.pull and RTL.pull.stamp) or os.date("%Y%m%d_%H%M%S")
     local dir = RTL.path.."\\logs\\"..tostring(mapid)
     local pull = {
         startMs = now, t0Ms = now, t0src = "combat_start", stamp = stamp,
@@ -2964,14 +3109,20 @@ function RTL_TL_StartPull(now)
         savedMs = now, stats = { matched = 0, absSum = 0, absMax = 0, syncs = 0, syncSkip = 0, nomatch = 0, dry = {} },
     }
     pull.ex = RTL_EX_NewPull(dir, stamp)
+    if (opt) then
+        pull.baseStamp, pull.part, pull.chain = opt.baseStamp, opt.part, opt.chain
+        pull.hitIds = opt.hitIds or pull.hitIds
+    end
     T.pull = pull
     T.recent = {}
     -- 戦闘開始（v0.4.0）：敵を対象にした最初のパーティのアクション → 直前の最後のパーティのアクション → first_hit → combat_start
     local pa = T.partyAct
     local lastOk = (pa and now - pa.ms >= 0 and now - pa.ms <= RTL.settings.firstActSec * 1000)
     pull.lastActMs = lastOk and pa.ms or nil
-    local h = RTL_FirstHostile(now)
-    if (h) then
+    local h = (not opt) and RTL_FirstHostile(now) or nil
+    if (opt and opt.t0Ms) then
+        pull.t0Ms, pull.t0src = opt.t0Ms, opt.t0src or "handoff"
+    elseif (h) then
         pull.t0Ms, pull.t0src = h.ms, "first_hostile"
     elseif (lastOk) then
         pull.t0Ms, pull.t0src = pa.ms, "first_action"
@@ -3324,7 +3475,7 @@ function RTL_TL_NotePartyAct(entityID, spellID, now)
     local T = RTL.tl
     local e = (Player and entityID == Player.id) and Player or EntityList:Get(entityID)
     local ci = e and e.castinginfo
-    local tg, hostile, nt = {}, nil, 0
+    local tg, hostile, nt, hcid = {}, nil, 0, nil
     if (type(ci) == "table") then
         local targets = ci.castingtargets
         if (type(targets) == "table") then
@@ -3334,7 +3485,10 @@ function RTL_TL_NotePartyAct(entityID, spellID, now)
                     if (nt <= 4) then tg[#tg + 1] = tostring(tid) end
                     if (not RTL.partySet[tid]) then
                         local te = EntityList:Get(tid)
-                        if (te and te.attackable) then hostile = true end
+                        if (te and te.attackable) then
+                            hostile = true
+                            hcid = hcid or te.contentid
+                        end
                     end
                 end
             end
@@ -3342,7 +3496,10 @@ function RTL_TL_NotePartyAct(entityID, spellID, now)
         if (hostile == nil and type(ci.channeltargetid) == "number" and ci.channeltargetid ~= 0
             and not RTL.partySet[ci.channeltargetid]) then
             local te = EntityList:Get(ci.channeltargetid)
-            if (te and te.attackable) then hostile = true end
+            if (te and te.attackable) then
+                hostile = true
+                hcid = hcid or te.contentid
+            end
         end
     end
     local list = T.partyActs or {}
@@ -3351,7 +3508,7 @@ function RTL_TL_NotePartyAct(entityID, spellID, now)
         castingid = type(ci) == "table" and ci.castingid or nil,
         chtarget = type(ci) == "table" and ci.channeltargetid or nil,
         targets = table.concat(tg, " ")..((nt > 4) and (" +"..(nt - 4)) or ""), ntargets = nt,
-        hostile = hostile or false }
+        hostile = hostile or false, hcid = hcid }
     local keepMs = math.max(3000, (RTL.settings.hostileSec or 2.5) * 1000 + 500)
     while (#list > 0 and (now - list[1].ms > keepMs or #list > 32)) do
         table.remove(list, 1)
@@ -3416,6 +3573,7 @@ end
 function RTL_TL_Scan(now)
     local T = RTL.tl
     local pull = T.pull
+    local handTo, handWhy = nil, nil
     for cid in pairs(T.cidSet) do
         local el = EntityList("contentid="..cid)
         if (el) then
@@ -3433,10 +3591,15 @@ function RTL_TL_Scan(now)
                     local lastHp = T.hpLast[id]
                     if (lastHp and hp < lastHp) then
                         if (pull) then
+                            local first = not pull.hitIds[id]
                             pull.hitIds[id] = true
                             RTL_TL_RebaseFirstHit(now)
+                            if (first and not handTo) then
+                                handTo = RTL_TL_HandoffTarget(cid)
+                                handWhy = "contentid "..tostring(cid).." の HP が初めて減った"
+                            end
                         elseif (not T.preDropMs) then
-                            T.preDropMs = now
+                            T.preDropMs, T.preDropCid = now, cid
                         end
                     end
                     T.hpLast[id] = hp
@@ -3445,7 +3608,11 @@ function RTL_TL_Scan(now)
         end
     end
     if (T.preDropMs and not pull and now - T.preDropMs > 30000) then
-        T.preDropMs = nil
+        T.preDropMs, T.preDropCid = nil, nil
+    end
+    if (handTo) then
+        RTL_TL_Handoff(handTo, now, handWhy)
+        return
     end
     if (pull) then
         RTL_TL_CheckHp(now)
@@ -4252,7 +4419,7 @@ function RTL_TL_Tick()
     if (inc) then
         T.outSince = nil
         if (not T.pull and now >= (T.skipUntil or 0)) then
-            if (RTL_TL_PickForCombat()) then
+            if (RTL_TL_PickForCombat(now)) then
                 T.skipUntil, T.skipped = nil, nil
                 RTL_TL_StartPull(now)
             else
@@ -6490,6 +6657,11 @@ function RTL_PE_DrawBody()
         GUI:SameLine()
         if (RTL_UI_Button("読み直す##pereload", nil, true)) then
             if (P.saveAt) then RTL_PE_SaveNow(now) end
+            -- タイムラインの一覧も作り直す（v0.6.9）。戦闘中でなく、今のマップならドライランのタイムラインも読み直す
+            P.planList, P.tlCache = nil, nil
+            if (not T.pull and T.mapid and P.mapid == T.mapid) then
+                RTL_TL_Reload(T.mapid, T.manualPick and T.file or nil)
+            end
             RTL_PE_Load(P.path, P.mapid, P.file)
             RTL_PE_Apply(P.path, "読み直す")
         end
